@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Directory Runner — area × keyword company search</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="blueprint-grid" aria-hidden="true"></div>
+
+<header class="hero">
+  <div class="hero-inner">
+    <p class="eyebrow">GOOGLE PLACES · TEXT SEARCH (NEW)</p>
+    <h1>Directory Runner</h1>
+    <p class="hero-sub">
+      Cross every area against every keyword, watch the matrix fill in live,
+      and walk away with a deduped CSV of company names. Every run is saved
+      to the shared directory under your name.
+    </p>
+    <p class="signed-in" id="signedIn">Checking sign-in…</p>
+  </div>
+</header>
+
+<main>
+
+  <section class="panel" id="panel-setup">
+    <div class="panel-head">
+      <span class="panel-index">01</span>
+      <h2>Credentials</h2>
+    </div>
+    <div class="field-row">
+      <label for="apiKey">
+        Google Maps API key
+        <span class="hint">Restrict it to your Vercel domain in Google Cloud Console</span>
+      </label>
+      <input type="password" id="apiKey" placeholder="AIza…" autocomplete="off">
+    </div>
+    <div class="field-row two-col">
+      <div>
+        <label for="city">City</label>
+        <input type="text" id="city" value="Vadodara">
+      </div>
+      <div>
+        <label for="maxPages">Max pages per search</label>
+        <select id="maxPages">
+          <option value="1">1 (20 results)</option>
+          <option value="2">2 (40 results)</option>
+          <option value="3" selected>3 (60 results)</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-areas">
+    <div class="panel-head">
+      <span class="panel-index">02</span>
+      <h2>Areas</h2>
+      <span class="panel-note">one per line — these become the matrix rows</span>
+    </div>
+    <textarea id="areas" rows="9">Nandesari GIDC
+Manjusar GIDC
+Por GIDC
+Ranoli
+Gorwa
+Makarpura GIDC
+Savli
+Halol
+Padra</textarea>
+  </section>
+
+  <section class="panel" id="panel-industry">
+    <div class="panel-head">
+      <span class="panel-index">03</span>
+      <h2>Industry → keywords</h2>
+      <span class="panel-note">these become the matrix columns</span>
+    </div>
+    <div class="field-row industry-row">
+      <input type="text" id="industry" placeholder="chemical, textile, pharmaceutical…" value="chemical">
+      <button type="button" id="genKeywords" class="btn btn-ghost">Generate</button>
+    </div>
+    <textarea id="keywords" rows="6">chemical industries
+chemical manufacturer
+chemical company
+chemical plant
+chemical factory</textarea>
+  </section>
+
+  <section class="panel" id="panel-exclude">
+    <div class="panel-head">
+      <span class="panel-index">04</span>
+      <h2>Exclude filter</h2>
+      <span class="panel-note">name substrings that mark a result as shop/pharmacy-looking</span>
+    </div>
+    <textarea id="exclude" rows="4">chemist
+pharmacy
+medical
+traders
+distributor
+wholesale
+hardware</textarea>
+  </section>
+
+  <section class="panel panel-run" id="panel-run">
+    <div class="panel-head">
+      <span class="panel-index">05</span>
+      <h2>Run</h2>
+      <span class="panel-note" id="queueCount">0 areas × 0 keywords = 0 searches</span>
+    </div>
+
+    <button type="button" id="runBtn" class="btn btn-primary" disabled>Run search</button>
+    <p class="run-hint" id="runHint">Enter your API key to enable the run button.</p>
+
+    <div id="matrixWrap" class="matrix-wrap hidden">
+      <div class="matrix-legend">
+        <span><i class="dot dot-pending"></i> pending</span>
+        <span><i class="dot dot-active"></i> searching</span>
+        <span><i class="dot dot-hit"></i> found companies</span>
+        <span><i class="dot dot-empty"></i> none found</span>
+        <span><i class="dot dot-error"></i> error</span>
+      </div>
+      <div id="matrix" class="matrix"></div>
+    </div>
+
+    <div id="logWrap" class="log-wrap hidden">
+      <div id="log" class="log"></div>
+    </div>
+  </section>
+
+  <section class="panel panel-results hidden" id="panel-results">
+    <div class="panel-head">
+      <span class="panel-index">06</span>
+      <h2>Results</h2>
+      <span class="panel-note" id="resultsNote"></span>
+    </div>
+    <div class="results-actions">
+      <button type="button" id="downloadBtn" class="btn btn-primary">Download CSV</button>
+      <span class="save-status" id="saveStatus"></span>
+    </div>
+    <div class="results-table-wrap">
+      <table id="resultsTable">
+        <thead><tr><th>#</th><th>Company name</th></tr></thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel panel-history" id="panel-history">
+    <div class="panel-head">
+      <span class="panel-index">07</span>
+      <h2>Directory history</h2>
+      <span class="panel-note">everything saved so far, across everyone</span>
+    </div>
+    <div class="results-actions">
+      <button type="button" id="loadHistoryBtn" class="btn btn-ghost">Load history</button>
+      <button type="button" id="downloadHistoryBtn" class="btn btn-ghost hidden">Download all as CSV</button>
+      <span class="save-status" id="historyStatus"></span>
+    </div>
+    <div class="results-table-wrap hidden" id="historyTableWrap">
+      <table id="historyTable">
+        <thead><tr><th>#</th><th>Company name</th><th>Extracted by</th><th>City</th><th>Industry</th><th>When</th></tr></thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>Deployed on Vercel · calls <code>/api/search</code> once per area/keyword pair, then filters and dedupes in your browser.</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
